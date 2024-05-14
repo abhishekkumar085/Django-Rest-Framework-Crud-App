@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,7 @@ SECRET_KEY = "django-insecure-eddbvk)m-z8*lqbchb^uh+!n(@qpky_apm@m7mam0p-u3_qjgi
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost:3000",'127.0.0.1']
 
 
 # Application definition
@@ -39,6 +40,13 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",    
     "movie",
+    'corsheaders',
+]
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_HEADERS = [
+    'Accept',
+    'Accept-Language',
+    'Content-Type',  # Allow Content-Type header
 ]
 
 MIDDLEWARE = [
@@ -49,6 +57,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = "myApp.urls"
@@ -80,10 +89,10 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",   #database name
         "USER":"postgres",  # change it to ur database user name
-        "PASSWORD":1, #change user database password
+        "PASSWORD":1234, # change user database password
 
         "HOST":"localhost",
-        "PORT":'1234',
+        "PORT":'5432',
     }
 }
 
@@ -128,3 +137,8 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Razorpay
+
+RAZORPAY_KEY_ID=os.environ.get("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET=os.environ.get("RAZORPAY_KEY_SECRET")
