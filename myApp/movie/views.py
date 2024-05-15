@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import razorpay
+import hmac
+import hashlib
 
 from django.conf import settings
 from rest_framework.serializers import ValidationError
@@ -149,7 +151,7 @@ class RazopayCreateOrder(APIView):
                 order_id=order_data['id']  # Save Razorpay order ID in your database
             )
 
-            return Response({"message": "Order created successfully", "order_data": order_data}, status=status.HTTP_201_CREATED)
+            return  JsonResponse({"message": "Order created successfully", "data": order_data}, status=status.HTTP_201_CREATED)
         except Exception as e:
             raise ValidationError(
                 {
@@ -160,6 +162,60 @@ class RazopayCreateOrder(APIView):
 
 # for payment verification
 
+# class PaymentVerification(APIView):
+   
+#     def post(self, request, *args, **kwargs):
+#         data = request.data
+#         razorpay_payment_id = data.get('razorpay_payment_id')
+#         razorpay_order_id = data.get('razorpay_order_id')
+#         razorpay_signature = data.get('razorpay_signature')
+
+#         client = razorpay.Client(auth=(
+#             settings.RAZORPAY_KEY_ID,
+#             settings.RAZORPAY_KEY_SECRET
+#         ))
+
+#         try:
+#             client.utility.verify_payment_signature({
+#                 'razorpay_payment_id': razorpay_payment_id,
+#                 'razorpay_order_id': razorpay_order_id,
+#                 'razorpay_signature': razorpay_signature
+#             })
+#             # Payment is verified
+#             payment = Payment.objects.create(
+#                 razorpay_payment_id=razorpay_payment_id,
+#                 razorpay_order_id=razorpay_order_id,
+#                 razorpay_signature=razorpay_signature,
+#                 amount=data.get('amount'),
+#                 currency=data.get('currency'),
+#                 status='SUCCESS'  # Set payment status
+#             )
+#             payment.save()
+
+#             serializer = PaymentSerializer(payment)
+            
+            
+            
+#             response_data = {
+#                 "message": "Payment verified successfully",
+#                 "data": serializer.data
+#             }
+#             return JsonResponse(response_data, status=200)
+#         except Exception as e:
+#             # Payment verification failed
+#             raise ValidationError(
+#                 {
+#                     "status_code": 400,
+#                     "message": str(e),
+#                 }
+#             )
+
+
+
+
+
+
+
 class PaymentVerification(APIView):
    
     def post(self, request, *args, **kwargs):
@@ -168,6 +224,17 @@ class PaymentVerification(APIView):
         razorpay_order_id = data.get('razorpay_order_id')
         razorpay_signature = data.get('razorpay_signature')
 
+        # Verify the signature
+        if not self.verify_signature(razorpay_order_id, razorpay_payment_id, razorpay_signature):
+            raise ValidationError({"status_code": 400, "message": "Signature verification failed"})
+        
+
+        # Check if payment with the provided ID already exists
+        if Payment.objects.filter(razorpay_payment_id=razorpay_payment_id).exists():
+            raise ValidationError({"status_code": 409, "message": "Payment with this ID already processed"})
+
+
+        # Signature is verified, continue with payment processing
         client = razorpay.Client(auth=(
             settings.RAZORPAY_KEY_ID,
             settings.RAZORPAY_KEY_SECRET
@@ -179,24 +246,28 @@ class PaymentVerification(APIView):
                 'razorpay_order_id': razorpay_order_id,
                 'razorpay_signature': razorpay_signature
             })
+
             # Payment is verified
             payment = Payment.objects.create(
                 razorpay_payment_id=razorpay_payment_id,
                 razorpay_order_id=razorpay_order_id,
                 razorpay_signature=razorpay_signature,
-                amount=data.get('amount'),
-                currency=data.get('currency'),
                 status='SUCCESS'  # Set payment status
             )
             payment.save()
 
             serializer = PaymentSerializer(payment)
-            return Response(serializer.data, status=200)
+            
+            response_data = {
+                "message": "Payment verified successfully",
+                "data": serializer.data
+            }
+            return JsonResponse(response_data, status=200)
         except Exception as e:
             # Payment verification failed
-            raise ValidationError(
-                {
-                    "status_code": 400,
-                    "message": str(e),
-                }
-            )
+            raise ValidationError({"status_code": 400, "message": str(e)})
+    
+    def verify_signature(self, order_id, payment_id, signature):
+        secret = settings.RAZORPAY_KEY_SECRET
+        generated_signature = hmac.new(secret.encode(), (order_id + "|" + payment_id).encode(), hashlib.sha256).hexdigest()
+        return generated_signature == signature

@@ -15,4 +15,4 @@ class RazorpaySerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = ['razorpay_payment_id', 'razorpay_order_id', 'razorpay_signature', 'amount', 'currency', 'status', 'created_at']        
+        fields = '__all__'      
